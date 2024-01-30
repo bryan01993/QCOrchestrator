@@ -1,0 +1,204 @@
+## Azure DevOps YAML pipeline
+#
+## Define the pipeline trigger
+#trigger:
+#  branches:
+#    include:
+#      - master
+#      - uat
+#      - develop
+#
+#variables:
+#  - name: isProd
+#    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
+#  - name: isDev
+#    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
+#  - name: isUat
+#    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/uat')]
+#
+#stages:
+#    - stage: DEV
+#      displayName: DEV
+#      condition: eq(variables.isDev, 'True')
+#      variables:
+#        - group: gcp-lh-dev
+#      jobs:
+#        - job: DEV
+#          pool:
+#            vmImage: "ubuntu-latest"
+#
+#          steps:
+#            - task: UsePythonVersion@0
+#              inputs:
+#                versionSpec: '3.10'
+#                addToPath: true
+#                architecture: 'x64'
+#
+#            - task: GoogleCloudSdkTool@1
+#              inputs:
+#                versionSpec: '315.x'
+#
+#            - task: DownloadSecureFile@1
+#              name: authkey
+#              displayName: "Download Service Account Key"
+#              inputs:
+#                secureFile: 'afb-lz-dev-datalake-0.json'
+#                retryCount: '3'
+#
+#            - script: |
+#                echo $(authkey.secureFilePath)
+#                gcloud config set project afb-lh-orch-$(DEPLOYMENT_TAG)
+#                gcloud auth activate-service-account --key-file $(authkey.secureFilePath)
+#              displayName: 'GCP Integrated Service Account Authentication and early deploy'
+#
+#            - script: |
+#                echo '##vso[task.setvariable variable=GOOGLE_APPLICATION_CREDENTIALS]$(authkey.secureFilePath)'
+#              displayName: set environment variable for subsequent steps
+#
+#            - script: |
+#                pip install -r requirements.txt
+#                python plugins/scripts/silver/generate_silver_dags.py $(DEPLOYMENT_TAG)
+#
+#            - script: |
+#                gsutil -m rm -r gs://$(GCS_COMPOSER_BUCKET)/dags
+#                gsutil -m cp -r dags gs://$(GCS_COMPOSER_BUCKET)
+#                gsutil -m cp -r dataform_dags gs://$(GCS_COMPOSER_BUCKET)/dags
+#              displayName: Copy DAGs folder
+#
+#            - script: |
+#                gsutil -m rm -r gs://$(GCS_COMPOSER_BUCKET)/data
+#                gsutil -m cp -r data gs://$(GCS_COMPOSER_BUCKET)
+#              displayName: Copy DATA folder
+#
+#            - script: |
+#                gsutil -m cp -r dags/feeds gs://afb-lh-config-$(DEPLOYMENT_TAG)
+#              displayName: Copy FEEDS folder
+#
+##            - script: |
+##                gsutil rm -r gs://$(GCS_COMPOSER_BUCKET)/plugins
+##                gsutil -m cp -r plugins gs://$(GCS_COMPOSER_BUCKET)
+##              displayName: Copy PLUGINS folder
+#
+#    - stage: PRE
+#      displayName: PRE
+#      condition: eq(variables.isUat, 'True')
+#      variables:
+#        - group: gcp-lh-pre
+#      jobs:
+#        - job: DeployUAT
+#          pool:
+#            vmImage: "ubuntu-latest"
+#
+#          steps:
+#            - task: UsePythonVersion@0
+#              inputs:
+#                versionSpec: '3.10'
+#                addToPath: true
+#                architecture: 'x64'
+#
+#            - task: GoogleCloudSdkTool@1
+#              inputs:
+#                versionSpec: '315.x'
+#
+#            - task: DownloadSecureFile@1
+#              name: authkey
+#              displayName: "Download Service Account Key"
+#              inputs:
+#                secureFile: 'afb-lz-pre-datalake-0.json'
+#                retryCount: '3'
+#
+#            - script: |
+#                echo $(authkey.secureFilePath)
+#                gcloud config set project afb-lh-orch-$(DEPLOYMENT_TAG)
+#                gcloud auth activate-service-account --key-file $(authkey.secureFilePath)
+#              displayName: 'GCP Integrated Service Account Authentication and early deploy'
+#
+#            - script: |
+#                echo '##vso[task.setvariable variable=GOOGLE_APPLICATION_CREDENTIALS]$(authkey.secureFilePath)'
+#              displayName: set environment variable for subsequent steps
+#
+#            - script: |
+#                pip install -r requirements.txt
+#                python plugins/scripts/silver/generate_silver_dags.py $(DEPLOYMENT_TAG)
+#
+#            - script: |
+#                gsutil rm -r gs://$(GCS_COMPOSER_BUCKET)/dags
+#                gsutil -m cp -r dags gs://$(GCS_COMPOSER_BUCKET)
+#                gsutil -m cp -r dataform_dags gs://$(GCS_COMPOSER_BUCKET)/dags
+#              displayName: Copy DAGs folder
+#
+#            - script: |
+#                gsutil rm -r gs://$(GCS_COMPOSER_BUCKET)/data
+#                gsutil -m cp -r data gs://$(GCS_COMPOSER_BUCKET)
+#              displayName: Copy DATA folder
+#
+#            - script: |
+#                gsutil -m cp -r dags/feeds gs://afb-lh-config-$(DEPLOYMENT_TAG)
+#              displayName: Copy FEEDS folder
+#
+##            - script: |
+##                gsutil rm -r gs://$(GCS_COMPOSER_BUCKET)/plugins
+##                gsutil -m cp -r plugins gs://$(GCS_COMPOSER_BUCKET)
+##              displayName: Copy PLUGINS folder
+#
+#    - stage: PRO
+#      displayName: PRO
+#      condition: eq(variables.isProd, 'True')
+#      variables:
+#        - group: gcp-lh-pro
+#      jobs:
+#        - job: PRO
+#          pool:
+#            vmImage: "ubuntu-latest"
+#
+#          steps:
+#            - task: UsePythonVersion@0
+#              inputs:
+#                versionSpec: '3.10'
+#                addToPath: true
+#                architecture: 'x64'
+#
+#            - task: GoogleCloudSdkTool@1
+#              inputs:
+#                versionSpec: '315.x'
+#
+#            - task: DownloadSecureFile@1
+#              name: authkey
+#              displayName: "Download Service Account Key"
+#              inputs:
+#                secureFile: 'afb-lz-pro-datalake-0.json'
+#                retryCount: '3'
+#
+#            - script: |
+#                echo $(authkey.secureFilePath)
+#                gcloud config set project afb-lh-orch-$(DEPLOYMENT_TAG)
+#                gcloud auth activate-service-account --key-file $(authkey.secureFilePath)
+#              displayName: 'GCP Integrated Service Account Authentication and early deploy'
+#
+#            - script: |
+#                echo '##vso[task.setvariable variable=GOOGLE_APPLICATION_CREDENTIALS]$(authkey.secureFilePath)'
+#              displayName: set environment variable for subsequent steps
+#
+#            - script: |
+#                pip install -r requirements.txt
+#                python plugins/scripts/silver/generate_silver_dags.py $(DEPLOYMENT_TAG)
+#
+#            - script: |
+#                gsutil rm -r gs://$(GCS_COMPOSER_BUCKET)/dags
+#                gsutil -m cp -r dags gs://$(GCS_COMPOSER_BUCKET)
+#                gsutil -m cp -r dataform_dags gs://$(GCS_COMPOSER_BUCKET)/dags
+#              displayName: Copy DAGs folder
+#
+#            - script: |
+#                gsutil rm -r gs://$(GCS_COMPOSER_BUCKET)/data
+#                gsutil -m cp -r data gs://$(GCS_COMPOSER_BUCKET)
+#              displayName: Copy DATA folder
+#
+#            - script: |
+#                gsutil -m cp -r dags/feeds gs://afb-lh-config-$(DEPLOYMENT_TAG)
+#              displayName: Copy FEEDS folder
+#
+##            - script: |
+##                gsutil rm -r gs://$(GCS_COMPOSER_BUCKET)/plugins
+##                gsutil -m cp -r plugins gs://$(GCS_COMPOSER_BUCKET)
+##              displayName: Copy PLUGINS folder

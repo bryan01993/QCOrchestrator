@@ -1,0 +1,16 @@
+defaults:
+  dag_config:
+    dag_prefix: "allfunds"
+    owner: "cloud-solutions"
+    start_date: "01/07/22"
+  source_config:
+    landing_bucket: "afb-lh-input-reception-${DEPLOYMENT_TAG}"
+    staging_bucket: "afb-lh-input-staging-${DEPLOYMENT_TAG}"
+    dataproc_bucket: "afb-lh-dataproc-${DEPLOYMENT_TAG}"
+    schemas_bucket: "afb-lh-input-schemas-${DEPLOYMENT_TAG}"
+  processing_config:
+    processing_bucket: "afb-lh-ingestion-pandora-${DEPLOYMENT_TAG}"
+    dataproc_staging_bucket: "afb-lh-dataflow-staging-${DEPLOYMENT_TAG}"
+  destination_config:
+    target_project_id: "afb-lh-ing-${DEPLOYMENT_TAG}"
+
